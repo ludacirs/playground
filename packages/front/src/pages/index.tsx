@@ -16,6 +16,7 @@ const Home = () => {
         Authorization: `Bearer ${id}`,
       },
     });
+
     eventSource.onmessage = ({ data }) => {
       console.log("New message", JSON.parse(data));
     };
@@ -41,9 +42,8 @@ const Home = () => {
         method: "post",
         body,
       });
-      console.log("메시지 post 성공");
-    } catch (error) {
-      console.log("실패");
+    } catch (e) {
+      console.log(e);
     }
   };
 
@@ -56,23 +56,24 @@ const Home = () => {
           handleClickLoginButton(1);
         }}
       >
-        1번으로 로그인
+        1번 채널 접속
       </Button>
       <Button
         onClick={() => {
           handleClickLoginButton(2);
         }}
       >
-        2번으로 로그인
+        2번 채널 접속
       </Button>
-      <div className="w-full h-10 bg-slate-500" />
+
+      <div className="w-full h-0.5 bg-slate-400" />
+
       <Button onClick={() => handleClickNotiferButton(1)}>
-        1번으로 노티 보내기
+        1번 채널 알림 보내기
       </Button>
       <Button onClick={() => handleClickNotiferButton(2)}>
-        2번으로 노티 보내기
+        2번 채널 알림 보내기
       </Button>
-      <div className="w-40 h-50 bg-slate-100">TEST1</div>
     </main>
   );
 };
