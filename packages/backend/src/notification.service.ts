@@ -14,12 +14,13 @@ export class NotificationService {
   subscribe(req: Request): Observable<MessageEvent> {
     return fromEvent(this.emitter, 'notifier').pipe(
       filter((messageEvent: MessageEvent) => {
-        const subscriberId =
-          req.headers?.['authorization'].split(' ')[1] ?? null;
-        const data = messageEvent.data;
-        const targetUserId = messageEvent.data.userId;
+        //   const subscriberId =
+        //   req.headers?.['authorization'].split(' ')[1] ?? null;
+        // const data = messageEvent.data;
+        // const targetUserId = messageEvent.data.userId;
 
-        return data && targetUserId == subscriberId;
+        // return data && targetUserId == subscriberId;
+        return messageEvent.data;
       }),
     );
   }

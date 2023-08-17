@@ -1,51 +1,65 @@
-self.addEventListener("fetch", (event) => {
-  const { headers, url } = event.request;
-  const isSSERequest = headers.get("Accept") === "text/event-stream";
-
-  // Process only SSE connections
+var SseHeaders = {
+  "content-type": "text/event-stream",
+  "Transfer-Encoding": "chunked",
+  Connection: "keep-alive",
+};
+var eventSourceMap = new Map();
+var getEventSourceMap = function (url) {
+  if (!eventSourceMap.has(url)) {
+    eventSourceMap.set(url, new EventSource(url));
+  }
+  return eventSourceMap.get(url);
+};
+var handleEventSourceMessage = function (controller, _a) {
+  var data = _a.data,
+    type = _a.type,
+    lastEventId = _a.lastEventId;
+  var responseText = sseChunkData(data, type, lastEventId);
+  var responseData = Uint8Array.from(responseText, function (x) {
+    return x.charCodeAt(0);
+  });
+  try {
+    controller.enqueue(responseData);
+  } catch (e) {
+    // SSE가 retry 될 때 stream이 유효하지 않아서 에러가 발생
+    // 어떡할지 모르겠음.
+  }
+};
+var sseChunkData = function (data, type, id) {
+  return (
+    Object.entries({ type: type, id: id, data: data })
+      .filter(function (_a) {
+        var value = _a[1];
+        return ![undefined, null].includes(value);
+      })
+      .map(function (_a) {
+        var key = _a[0],
+          value = _a[1];
+        return "".concat(key, ": ").concat(value);
+      })
+      .join("\n") + "\n\n"
+  );
+};
+self.addEventListener("fetch", function (event) {
+  var fetchEvent = event;
+  console.log("event", event);
+  var _a = fetchEvent.request,
+    headers = _a.headers,
+    url = _a.url;
+  var isSSERequest = headers.get("Accept") === "text/event-stream";
   if (!isSSERequest) {
     return;
   }
-
-  // Headers for SSE response
-  const sseHeaders = {
-    "content-type": "text/event-stream",
-    "Transfer-Encoding": "chunked",
-    Connection: "keep-alive",
-  };
-  // Function for formatting message to SSE response
-  const sseChunkData = (data, event, retry, id) =>
-    Object.entries({ event, id, data, retry })
-      .filter(([, value]) => ![undefined, null].includes(value))
-      .map(([key, value]) => `${key}: ${value}`)
-      .join("\n") + "\n\n";
-
-  // Map with server connections, where key - url, value - EventSource
-  const serverConnections = {};
-  // For each request opens only one server connection and use it for next requests with the same url
-  const getServerConnection = (url) => {
-    if (!serverConnections[url]) {
-      serverConnections[url] = new EventSource(url);
-    }
-
-    return serverConnections[url];
-  };
-  // On message from server forward it to browser
-  const onServerMessage = (controller, test) => {
-    console.log("test", test);
-    const { data, type, retry, lastEventId } = test;
-    const responseText = sseChunkData(data, type, retry, lastEventId);
-    const responseData = Uint8Array.from(responseText, (x) => x.charCodeAt(0));
-    controller.enqueue(responseData);
-  };
-  const stream = new ReadableStream({
-    start: (controller) =>
-      (getServerConnection(url).onmessage = onServerMessage.bind(
-        null,
-        controller
-      )),
+  var stream = new ReadableStream({
+    start: function (controller) {
+      return getEventSourceMap(url).addEventListener(
+        "message",
+        function (event) {
+          handleEventSourceMessage(controller, event);
+        }
+      );
+    },
   });
-  const response = new Response(stream, { headers: sseHeaders });
-
-  event.respondWith(response);
+  var response = new Response(stream, { headers: SseHeaders });
+  fetchEvent.respondWith(response);
 });
